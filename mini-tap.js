@@ -1,7 +1,34 @@
 /**
  * tap directive
- * Created by dogrod
+ * Created by Rodrick Zhu
  */
+
+// adapted from https://github.com/WICG/EventListenerOptions/blob/gh-pages/explainer.md
+const detectPassiveEvents = {
+  /**
+   * update function
+   */
+  update() {
+    if (
+      typeof window === 'object' &&
+      typeof window.addEventListener === 'function' &&
+      typeof Object.defineProperty === 'function'
+    ) {
+      let passive = false
+      const options = Object.defineProperty({}, 'passive', {
+        /**
+         * get property
+         */
+        get() { passive = true },
+      })
+      window.addEventListener('test', null, options)
+
+      detectPassiveEvents.hasSupport = passive
+    }
+  },
+}
+
+detectPassiveEvents.update()
 
 const handleTouchStart = (e, touchObj) => {
   const touches = e.touches[0]
@@ -36,6 +63,8 @@ export default {
     el.__touchStartHandler__ = handleTouchStart
     el.__touchEndHandler__ = handleTouchEnd
 
+    const options = binding.modifiers.prevent ? {} : { passive: true }
+
     el.addEventListener('touchstart', (e) => {
       if (binding.modifiers.stop) {
         e.stopPropagation()
@@ -45,7 +74,7 @@ export default {
       }
 
       handleTouchStart(e, el)
-    })
+    }, detectPassiveEvents.hasSupport ? options : false)
 
     el.addEventListener('touchend', (e) => {
       if (binding.modifiers.stop) {
@@ -56,7 +85,7 @@ export default {
       }
 
       handleTouchEnd(e, el, binding.value)
-    })
+    }, detectPassiveEvents.hasSupport ? options : false)
   },
   unbind(el) {
     document.removeEventListener('touchstart', el.__touchStartHandler__)
